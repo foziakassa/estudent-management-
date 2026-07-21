@@ -230,7 +230,7 @@ function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: "Outfit, sans-serif" }}>System Overview</h1>
+        <h1 className="text-3xl font-bold text-foreground" style={{ fontFamily: "Outfit, sans-serif" }}>System Overview</h1>
         <p className="text-muted-foreground text-sm mt-1">Ethio Academy — Academic Year 2025/26</p>
       </div>
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
@@ -450,7 +450,11 @@ function CalendarView() {
           <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: "Outfit, sans-serif" }}>Academic Calendar</h1>
           <p className="text-muted-foreground text-sm mt-1">Upcoming events, exams & holidays</p>
         </div>
-        <button className="flex items-center gap-2 bg-primary text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-teal-700 transition-colors">
+        <button 
+        onClick={() => {
+        //  router.push("/add-event");
+        }}
+        className="flex items-center gap-2 bg-primary text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-teal-700 transition-colors">
           <Plus size={16} /> Add Event
         </button>
       </div>
