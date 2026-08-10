@@ -1,13 +1,60 @@
 import { useState } from "react";
 import { Eye, Plus, Search } from "lucide-react";
-import { userAccounts } from "@/infrastructure/data/mock";
+import { userAccounts as initialUserAccounts } from "@/infrastructure/data/mock";
 import { StatusBadge } from "@/presentation/components/shared";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/app/components/ui/dialog";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
 
 export function AdminUsers() {
+  const [users, setUsers] = useState(initialUserAccounts);
   const [search, setSearch] = useState("");
-  const filtered = userAccounts.filter(
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Form state for adding user
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("Student");
+
+  const filtered = users.filter(
     (user) => user.name.toLowerCase().includes(search.toLowerCase()) || user.id.includes(search)
   );
+
+  const handleAddUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !email) return;
+
+    const prefixMap: Record<string, string> = {
+      Student: "ST",
+      Teacher: "TR",
+      Parent: "PT",
+      Admin: "AD",
+    };
+    const prefix = prefixMap[role] || "ST";
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    const newId = `${prefix}/${randomNum}/26`;
+
+    const newUser = {
+      id: newId,
+      name,
+      role,
+      email,
+      status: "Active",
+    };
+
+    setUsers([newUser, ...users]);
+    setName("");
+    setEmail("");
+    setRole("Student");
+    setIsModalOpen(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -18,14 +65,18 @@ export function AdminUsers() {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">Manage Teachers, Students & Parents</p>
         </div>
-        <button className="flex items-center gap-2 bg-primary text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-teal-700 transition-colors">
+        <Button
+          onClick={() => setIsModalOpen(true)}
+          className="bg-primary text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-teal-700 transition-colors"
+        >
           <Plus size={16} /> Add User
-        </button>
+        </Button>
       </div>
+
       <div className="bg-white rounded-2xl border border-border p-5 space-y-4">
         <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
+          <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name or ID..."
@@ -66,6 +117,7 @@ export function AdminUsers() {
           </table>
         </div>
       </div>
+
       <div className="bg-white rounded-2xl border border-border p-5">
         <h3 className="font-semibold text-foreground mb-4" style={{ fontFamily: "Outfit, sans-serif" }}>
           ID Generation Logic
@@ -94,6 +146,81 @@ export function AdminUsers() {
           ))}
         </div>
       </div>
+
+      {/* Add User Dialog */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle style={{ fontFamily: "Outfit, sans-serif" }}>Add New User</DialogTitle>
+            {/* <DialogDescription>
+              Create a new user account. An automated ID will be assigned based on the selected role.
+            </DialogDescription> */}
+          </DialogHeader>
+
+          <form onSubmit={handleAddUser} className="space-y-4 py-2">
+            <div>
+              <label className="text-xs text-black uppercase tracking-wide font-medium block mb-1.5">
+                Full Name
+              </label>
+              <Input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Abebe Bikila"
+                className="w-full px-3 py-2.5 rounded-xl bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground uppercase tracking-wide font-medium block mb-1.5">
+                Email Address
+              </label>
+              <Input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="e.g. abebe@school.et"
+                className="w-full px-3 py-2.5 rounded-xl bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground uppercase tracking-wide font-medium block mb-1.5">
+                Role
+              </label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                <option value="Student">Student (ST)</option>
+                <option value="Teacher">Teacher (TR)</option>
+                <option value="Parent">Parent (PT)</option>
+                <option value="Admin">Admin (AD)</option>
+              </select>
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-sm font-medium border border-border hover:bg-secondary transition-colors"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-white hover:bg-teal-700 transition-colors"
+              >
+                Create Account
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
