@@ -12,6 +12,7 @@ import {
 } from "@/app/components/ui/dialog";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
+import poster from "@/domain/utils/posters"; // Import poster
 
 export function AdminUsers() {
   const [users, setUsers] = useState(initialUserAccounts);
@@ -23,37 +24,88 @@ export function AdminUsers() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("Student");
 
+  // Loading and error states
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
   const filtered = users.filter(
     (user) => user.name.toLowerCase().includes(search.toLowerCase()) || user.id.includes(search)
   );
 
-  const handleAddUser = (e: React.FormEvent) => {
+  const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email) return;
+    setError("");
 
-    const prefixMap: Record<string, string> = {
-      Student: "ST",
-      Teacher: "TR",
-      Parent: "PT",
-      Admin: "AD",
-    };
-    const prefix = prefixMap[role] || "ST";
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    const newId = `${prefix}/${randomNum}/26`;
+    // Validate required fields
+    if (!name.trim() || !email.trim()) {
+      setError("Name and email are required");
+      return;
+    }
 
-    const newUser = {
-      id: newId,
-      name,
-      role,
-      email,
-      status: "Active",
-    };
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
 
-    setUsers([newUser, ...users]);
-    setName("");
-    setEmail("");
-    setRole("Student");
-    setIsModalOpen(false);
+    setIsLoading(true);
+
+    try {
+      // Generate User ID (optional - backend can also generate)
+      const prefixMap: Record<string, string> = {
+        Student: "ST",
+        Teacher: "TR",
+        Parent: "PT",
+        Admin: "AD",
+      };
+      const prefix = prefixMap[role] || "ST";
+      const randomNum = Math.floor(1000 + Math.random() * 9000);
+      const newId = `${prefix}/${randomNum}/26`;
+
+      // Prepare payload for API
+      const payload = {
+        id: newId,
+        name: name.trim(),
+        email: email.trim(),
+        role: role,
+        status: "Active",
+        // Add any additional fields required by your backend
+        // For Student: grade, section
+        // For Teacher: subject, section
+      };
+
+      // Make API call using poster
+      const response = await poster("/users", payload);
+
+      // Update users list with response data
+      // This ensures we have the exact data the server stored
+      const newUser = response.data || response;
+      setUsers([newUser, ...users]);
+
+      // Reset form and close modal
+      setName("");
+      setEmail("");
+      setRole("Student");
+      setIsModalOpen(false);
+
+      // Optional: Show success notification
+      console.log("User created successfully:", newUser);
+
+    } catch (err: any) {
+      console.error("Failed to create user:", err);
+
+      // Extract error message from response
+      const errorMsg = err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to create user. Please try again.";
+
+      setError(errorMsg);
+
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -72,6 +124,13 @@ export function AdminUsers() {
           <Plus size={16} /> Add User
         </Button>
       </div>
+
+      {/* Error Toast/Alert */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+          {error}
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-border p-5 space-y-4">
         <div className="relative">
@@ -152,9 +211,11 @@ export function AdminUsers() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle style={{ fontFamily: "Outfit, sans-serif" }}>Add New User</DialogTitle>
-            {/* <DialogDescription>
-              Create a new user account. An automated ID will be assigned based on the selected role.
-            </DialogDescription> */}
+            {error && (
+              <DialogDescription className="text-red-500 text-sm">
+                {error}
+              </DialogDescription>
+            )}
           </DialogHeader>
 
           <form onSubmit={handleAddUser} className="space-y-4 py-2">
@@ -168,7 +229,8 @@ export function AdminUsers() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Abebe Bikila"
-                className="w-full px-3 py-2.5 rounded-xl bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                disabled={isLoading}
+                className="w-full px-3 py-2.5 rounded-xl bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
               />
             </div>
 
@@ -182,7 +244,8 @@ export function AdminUsers() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="e.g. abebe@school.et"
-                className="w-full px-3 py-2.5 rounded-xl bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                disabled={isLoading}
+                className="w-full px-3 py-2.5 rounded-xl bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
               />
             </div>
 
@@ -193,7 +256,8 @@ export function AdminUsers() {
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                disabled={isLoading}
+                className="w-full px-3 py-2.5 rounded-xl bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
               >
                 <option value="Student">Student (ST)</option>
                 <option value="Teacher">Teacher (TR)</option>
@@ -206,16 +270,21 @@ export function AdminUsers() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setError("");
+                }}
+                disabled={isLoading}
                 className="px-4 py-2 rounded-xl text-sm font-medium border border-border hover:bg-secondary transition-colors"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-white hover:bg-teal-700 transition-colors"
+                disabled={isLoading}
+                className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-white hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Create Account
+                {isLoading ? "Creating..." : "Create Account"}
               </Button>
             </DialogFooter>
           </form>
