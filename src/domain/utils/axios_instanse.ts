@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-    baseURL: import.meta.env.VITE_PUBLIC_APP_API,
+    baseURL: import.meta.env.APP_API,
     headers: {
         "Content-Type": "application/json",
         // "x-api-key": process.env.X_ORGANIZARION_API_KEY,
