@@ -12,7 +12,7 @@ import {
 } from "@/app/components/ui/dialog";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
-import poster from "@/domain/utils/posters"; // Import poster
+import poster from "@/domain/utils/posters";
 
 export function AdminUsers() {
   const [users, setUsers] = useState(initialUserAccounts);
@@ -20,13 +20,18 @@ export function AdminUsers() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Form state for adding user
-  const [name, setName] = useState("");
+  const [full_name, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("Student");
+  const [phone_number, setPhoneNumber] = useState(""); // New state for phone
+  const [role, setRole] = useState("STUDENT");
+  const [grade, setGrade] = useState<number | "">("");
 
   // Loading and error states
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Grade options for Ethiopian high schools (1-12)
+  const gradeOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
   const filtered = users.filter(
     (user) => user.name.toLowerCase().includes(search.toLowerCase()) || user.id.includes(search)
@@ -37,56 +42,115 @@ export function AdminUsers() {
     setError("");
 
     // Validate required fields
-    if (!name.trim() || !email.trim()) {
-      setError("Name and email are required");
+    if (!full_name.trim()) {
+      setError("Full name is required");
       return;
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError("Please enter a valid email address");
-      return;
+    // Validate based on role
+    if (role === "STUDENT") {
+      // Student requires email
+      if (!email.trim()) {
+        setError("Email is required for students");
+        return;
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        setError("Please enter a valid email address");
+        return;
+      }
+
+      // Student requires grade
+      if (!grade) {
+        setError("Grade is required for students");
+        return;
+      }
+
+      // Validate grade range
+      if (grade && (grade < 1 || grade > 12)) {
+        setError("Grade must be between 1 and 12");
+        return;
+      }
+    } else {
+      // For Teacher, Parent, Admin - require at least email or phone
+      if (!email.trim() && !phone_number.trim()) {
+        setError("Either email or phone number is required");
+        return;
+      }
+
+      // Validate email if provided
+      if (email.trim()) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          setError("Please enter a valid email address");
+          return;
+        }
+      }
+
+      // Validate phone if provided
+      if (phone_number.trim()) {
+        // Ethiopian phone number format: 09XXXXXXXX or 07XXXXXXXX
+        const phoneRegex = /^(09|07)\d{8}$/;
+        if (!phoneRegex.test(phone_number.trim())) {
+          setError("Please enter a valid Ethiopian phone number (e.g., 0912345678)");
+          return;
+        }
+      }
     }
 
     setIsLoading(true);
 
     try {
-      // Generate User ID (optional - backend can also generate)
-      const prefixMap: Record<string, string> = {
-        Student: "ST",
-        Teacher: "TR",
-        Parent: "PT",
-        Admin: "AD",
+      // Prepare payload with correct field names for backend
+      const payload: any = {
+        full_name: full_name.trim(),
+        Role: role, // STUDENT, TEACHER, PARENT, ADMIN
       };
-      const prefix = prefixMap[role] || "ST";
-      const randomNum = Math.floor(1000 + Math.random() * 9000);
-      const newId = `${prefix}/${randomNum}/26`;
 
-      // Prepare payload for API
-      const payload = {
-        id: newId,
-        name: name.trim(),
-        email: email.trim(),
-        role: role,
-        status: "Active",
-        // Add any additional fields required by your backend
-        // For Student: grade, section
-        // For Teacher: subject, section
-      };
+      // Add email if provided
+      if (email.trim()) {
+        payload.Email = email.trim();
+      }
+
+      // Add phone number if provided (for non-student roles)
+      if (phone_number.trim()) {
+        payload.phone = phone_number.trim();
+      }
+
+      // Add grade as number only for students
+      if (role === "STUDENT" && grade) {
+        payload.Grade = Number(grade);
+      }
+
+      console.log("Sending payload:", JSON.stringify(payload, null, 2));
 
       // Make API call using poster
-      const response = await poster("/users", payload);
+      const response = await poster("/users/", payload);
 
-      // Update users list with response data
-      // This ensures we have the exact data the server stored
-      const newUser = response.data || response;
+      console.log("Response:", response);
+
+      // Map response to frontend format
+      const responseData = response.data || response;
+      const newUser = {
+        id: responseData?.Id || responseData?.id || `temp-${Date.now()}`,
+        name: responseData?.FullName || responseData?.full_name || responseData?.name || full_name,
+        email: responseData?.Email || responseData?.email || responseData?.email || email || "-",
+        phone: responseData?.PhoneNumber || responseData?.phone_number || responseData?.phone || phone_number || "-",
+        role: responseData?.Role || responseData?.role || responseData?.role || role.toLowerCase(),
+        status: responseData?.Status || responseData?.status || "Active",
+        grade: responseData?.Grade || responseData?.grade || grade,
+      };
+
       setUsers([newUser, ...users]);
 
       // Reset form and close modal
-      setName("");
+      setFullName("");
       setEmail("");
-      setRole("Student");
+      setPhoneNumber("");
+      setRole("STUDENT");
+      setGrade("");
       setIsModalOpen(false);
 
       // Optional: Show success notification
@@ -98,6 +162,7 @@ export function AdminUsers() {
       // Extract error message from response
       const errorMsg = err.response?.data?.message ||
         err.response?.data?.error ||
+        err.response?.data?.detail ||
         err.message ||
         "Failed to create user. Please try again.";
 
@@ -106,6 +171,17 @@ export function AdminUsers() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Reset form when modal closes
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setError("");
+    setFullName("");
+    setEmail("");
+    setPhoneNumber("");
+    setRole("STUDENT");
+    setGrade("");
   };
 
   return (
@@ -146,7 +222,7 @@ export function AdminUsers() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                {["User ID", "Name", "Role", "Email", "Status", ""].map((header) => (
+                {["User ID", "Name", "Role", "Email", "Phone", "Grade", "Status", ""].map((header) => (
                   <th key={header} className="text-left py-3 px-2 text-muted-foreground font-medium text-xs uppercase tracking-wide">
                     {header}
                   </th>
@@ -161,7 +237,11 @@ export function AdminUsers() {
                   <td className="py-3 px-2">
                     <StatusBadge type={user.role} />
                   </td>
-                  <td className="py-3 px-2 text-muted-foreground">{user.email}</td>
+                  <td className="py-3 px-2 text-muted-foreground">{user.email || "-"}</td>
+                  <td className="py-3 px-2 text-muted-foreground">{user.phone || "-"}</td>
+                  <td className="py-3 px-2 text-muted-foreground">
+                    {user.grade ? `Grade ${user.grade}` : "-"}
+                  </td>
                   <td className="py-3 px-2">
                     <StatusBadge type={user.status} />
                   </td>
@@ -221,13 +301,13 @@ export function AdminUsers() {
           <form onSubmit={handleAddUser} className="space-y-4 py-2">
             <div>
               <label className="text-xs text-black uppercase tracking-wide font-medium block mb-1.5">
-                Full Name
+                Full Name <span className="text-red-500">*</span>
               </label>
               <Input
                 type="text"
                 required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={full_name}
+                onChange={(e) => setFullName(e.target.value)}
                 placeholder="e.g. Abebe Bikila"
                 disabled={isLoading}
                 className="w-full px-3 py-2.5 rounded-xl bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
@@ -236,44 +316,92 @@ export function AdminUsers() {
 
             <div>
               <label className="text-xs text-muted-foreground uppercase tracking-wide font-medium block mb-1.5">
-                Email Address
+                Role <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={role}
+                onChange={(e) => {
+                  setRole(e.target.value);
+                  // Reset fields when role changes
+                  if (e.target.value === "STUDENT") {
+                    setPhoneNumber("");
+                    setGrade("");
+                  } else {
+                    setGrade("");
+                  }
+                }}
+                disabled={isLoading}
+                className="w-full px-3 py-2.5 rounded-xl bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
+              >
+                <option value="STUDENT">Student (ST)</option>
+                <option value="TEACHER">Teacher (TR)</option>
+                <option value="PARENT">Parent (PT)</option>
+                <option value="ADMIN">Admin (AD)</option>
+              </select>
+            </div>
+
+            {/* Email field - required for students, optional for others */}
+            <div>
+              <label className="text-xs text-muted-foreground uppercase tracking-wide font-medium block mb-1.5">
+                Email Address {role === "STUDENT" && <span className="text-red-500">*</span>}
+                {role !== "STUDENT" && <span className="text-gray-400 text-xs"> (Optional)</span>}
               </label>
               <Input
                 type="email"
-                required
+                required={role === "STUDENT"}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="e.g. abebe@school.et"
+                placeholder={role === "STUDENT" ? "e.g. abebe@school.et" : "e.g. abebe@school.et (optional)"}
                 disabled={isLoading}
                 className="w-full px-3 py-2.5 rounded-xl bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
               />
             </div>
 
-            <div>
-              <label className="text-xs text-muted-foreground uppercase tracking-wide font-medium block mb-1.5">
-                Role
-              </label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                disabled={isLoading}
-                className="w-full px-3 py-2.5 rounded-xl bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
-              >
-                <option value="Student">Student (ST)</option>
-                <option value="Teacher">Teacher (TR)</option>
-                <option value="Parent">Parent (PT)</option>
-                <option value="Admin">Admin (AD)</option>
-              </select>
-            </div>
+            {/* Phone field - only for non-student roles */}
+            {role !== "STUDENT" && (
+              <div>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide font-medium block mb-1.5">
+                  Phone Number <span className="text-gray-400 text-xs">(Optional)</span>
+                </label>
+                <Input
+                  type="tel"
+                  value={phone_number}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="e.g. 0912345678"
+                  disabled={isLoading}
+                  className="w-full px-3 py-2.5 rounded-xl bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
+                />
+              </div>
+            )}
+
+            {/* Grade field - only show for students */}
+            {role === "STUDENT" && (
+              <div>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide font-medium block mb-1.5">
+                  Grade <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={grade}
+                  onChange={(e) => setGrade(Number(e.target.value))}
+                  required={role === "STUDENT"}
+                  disabled={isLoading}
+                  className="w-full px-3 py-2.5 rounded-xl bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
+                >
+                  <option value="">Select Grade</option>
+                  {gradeOptions.map((g) => (
+                    <option key={g} value={g}>
+                      Grade {g}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <DialogFooter className="pt-2">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  setIsModalOpen(false);
-                  setError("");
-                }}
+                onClick={handleModalClose}
                 disabled={isLoading}
                 className="px-4 py-2 rounded-xl text-sm font-medium border border-border hover:bg-secondary transition-colors"
               >
