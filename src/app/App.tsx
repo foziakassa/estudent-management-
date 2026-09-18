@@ -1,9 +1,8 @@
 import { useState } from "react";
 import type { Role } from "@/domain/types";
-import { Sidebar, MobileHeader } from "@/presentation/components/layout";
+import { Sidebar, AppHeader } from "@/presentation/components/layout";
 import { NAV_BY_ROLE } from "@/presentation/config/navigation";
 
-// Role-Based Feature Modules
 import { LoginScreen } from "@/presentation/features/auth";
 import { AdminDashboard, AdminUsers, AdminStructure, FeedbackAdminView } from "@/presentation/features/admin";
 import { TeacherDashboard, GradeEntryView, DisciplineView } from "@/presentation/features/teacher";
@@ -62,26 +61,37 @@ export default function App() {
   const nav = NAV_BY_ROLE[role];
   const activeLabel = nav.find((n) => n.key === active)?.label ?? "";
 
+  const handleLogout = () => {
+    localStorage.removeItem("access_token");
+    setRole(null);
+  };
+
   return (
-    <div className="flex h-screen bg-background overflow-hidden" style={{ fontFamily: "DM Sans, sans-serif" }}>
+    <div
+      className="flex h-screen bg-background overflow-hidden"
+      style={{ fontFamily: "DM Sans, sans-serif" }}
+    >
       <Sidebar
         role={role}
         active={active}
         setActive={setActive}
-        onLogout={() => setRole(null)}
+        onLogout={handleLogout}
         collapsed={collapsed}
-        setCollapsed={setCollapsed}
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
       />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <MobileHeader
+        <AppHeader
           role={role}
           activeLabel={activeLabel}
+          collapsed={collapsed}
+          onToggleCollapse={() => setCollapsed((c) => !c)}
           onMenuOpen={() => setMobileOpen(true)}
+          onLogout={handleLogout}
         />
+       
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-5xl mx-auto p-4 md:p-6 lg:p-8">
+          <div className="w-full px-4 md:px-6 py-4 md:py-5">
             {renderView(role, active)}
           </div>
         </main>
