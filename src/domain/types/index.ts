@@ -53,6 +53,7 @@ export type LostFoundItem = {
 };
 
 export type UserAccount = {
+  numericId?: number;
   phone?: string;
   id: string;
   name: string;
@@ -60,6 +61,8 @@ export type UserAccount = {
   email?: string;
   status: string;
   grade?: string;
+  regYear?: number;
+  createdAt?: string;
 };
 
 export type Feedback = {

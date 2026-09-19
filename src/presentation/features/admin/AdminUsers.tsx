@@ -14,6 +14,7 @@ import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import poster from "@/domain/utils/posters";
 import axiosInstance from "@/domain/utils/axios_instanse";
+import { UserDetailView } from "./UserDetailView";
 
 const PAGE_LIMIT = 10;
 
@@ -49,17 +50,20 @@ function mapStatus(status: string) {
 
 function mapApiUser(user: ApiUser): UserAccount {
   return {
-    id: user.user_id,
+    numericId: user.id,
+    id: user.user_id || String(user.id),
     name: user.full_name,
     email: user.email || "-",
     phone: user.phone || "-",
     role: mapRole(user.role),
     status: mapStatus(user.status),
     grade: user.grade_level != null ? String(user.grade_level) : undefined,
+    regYear: user.reg_year,
   };
 }
 
 export function AdminUsers() {
+  const [selectedUserId, setSelectedUserId] = useState<string | number | null>(null);
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -241,6 +245,16 @@ export function AdminUsers() {
     setGrade("");
   };
 
+  if (selectedUserId !== null) {
+    return (
+      <UserDetailView
+        userId={selectedUserId}
+        onBack={() => setSelectedUserId(null)}
+        onUserUpdated={() => fetchUsers(page)}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -250,15 +264,17 @@ export function AdminUsers() {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">Manage Teachers, Students & Parents</p>
         </div>
-        <Button
-          onClick={() => {
-            setSuccessInfo(null);
-            setIsModalOpen(true);
-          }}
-          className="bg-primary text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-teal-700 transition-colors"
-        >
-          <Plus size={16} /> Add User
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => {
+              setSuccessInfo(null);
+              setIsModalOpen(true);
+            }}
+            className="bg-primary text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-teal-700 transition-colors"
+          >
+            <Plus size={16} /> Add User
+          </Button>
+        </div>
       </div>
 
       {fetchError && (
@@ -329,9 +345,12 @@ export function AdminUsers() {
                 filtered.map((user) => (
                   <tr
                     key={user.id}
-                    className="border-b border-border/50 hover:bg-secondary/40 transition-colors"
+                    onClick={() => setSelectedUserId(user.numericId ?? user.id)}
+                    className="border-b border-border/50 hover:bg-secondary/40 transition-colors cursor-pointer group"
                   >
-                    <td className="py-3 px-2 font-mono text-xs text-muted-foreground">{user.id}</td>
+                    <td className="py-3 px-2 font-mono text-xs text-muted-foreground group-hover:text-primary font-medium">
+                      {user.id}
+                    </td>
                     <td className="py-3 px-2 font-medium text-foreground">{user.name}</td>
                     <td className="py-3 px-2">
                       <StatusBadge type={user.role} />
@@ -345,8 +364,16 @@ export function AdminUsers() {
                       <StatusBadge type={user.status} />
                     </td>
                     <td className="py-3 px-2">
-                      <button className="text-primary hover:text-teal-700 transition-colors">
-                        <Eye size={15} />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedUserId(user.numericId ?? user.id);
+                        }}
+                        className="text-primary hover:text-teal-700 transition-colors p-1 rounded-lg hover:bg-primary/10 cursor-pointer"
+                        title="View / Edit User Details"
+                      >
+                        <Eye size={16} />
                       </button>
                     </td>
                   </tr>
