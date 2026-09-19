@@ -13,6 +13,7 @@ import {
   Save,
   Search,
   Shield,
+  Trash2,
   User,
   UserCheck,
   X,
@@ -21,9 +22,10 @@ import {
 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
-import { StatusBadge } from "@/presentation/components/shared";
+import { StatusBadge, WarningDialog } from "@/presentation/components/shared";
 import axiosInstance from "@/domain/utils/axios_instanse";
 import putter from "@/domain/utils/putter";
+import deleter from "@/domain/utils/deleter";
 
 interface UserDetailViewProps {
   userId: string | number;
@@ -86,9 +88,13 @@ export function UserDetailView({ userId, onBack, onUserUpdated }: UserDetailView
   const [rawUser, setRawUser] = useState<RawApiUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(true);
 
@@ -289,10 +295,44 @@ export function UserDetailView({ userId, onBack, onUserUpdated }: UserDetailView
     }
   };
 
+  const handleDeleteUser = async () => {
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const targetId = rawUser?.id ?? currentId;
+      await deleter(`/users/${targetId}`);
+
+      setIsDeleteDialogOpen(false);
+      setSaveSuccess(`User #${targetId} deleted successfully.`);
+
+      if (onUserUpdated) {
+        onUserUpdated();
+      }
+
+      // Navigate back to user list after short confirmation
+      setTimeout(() => {
+        onBack();
+      }, 800);
+    } catch (err: any) {
+      console.error("Failed to delete user:", err);
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.response?.data?.detail ||
+        err.message ||
+        "Failed to delete user. Please try again.";
+      setDeleteError(msg);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleReset = () => {
     if (!rawUser) return;
     setSaveError(null);
     setSaveSuccess(null);
+    setDeleteError(null);
     setFullName(rawUser.full_name || rawUser.name || "");
     setEmail(rawUser.email || rawUser.Email || "");
     setPhone(rawUser.phone || rawUser.phone_number || "");
@@ -480,13 +520,22 @@ export function UserDetailView({ userId, onBack, onUserUpdated }: UserDetailView
                 </div>
               </div>
 
-              {/* Mode Toggle Button */}
-              <div className="flex items-center gap-2 shrink-0">
+              {/* Header Action Buttons */}
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  className="rounded-xl px-3.5 py-2 text-sm font-medium text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 size={15} />
+                  Delete User
+                </Button>
                 <Button
                   type="button"
                   variant={isEditing ? "default" : "outline"}
                   onClick={() => setIsEditing(!isEditing)}
-                  className="rounded-xl px-4 py-2 text-sm font-medium flex items-center gap-2"
+                  className="rounded-xl px-4 py-2 text-sm font-medium flex items-center gap-2 cursor-pointer"
                 >
                   <Edit3 size={15} />
                   {isEditing ? "Editing Mode" : "Edit Details"}
@@ -717,7 +766,33 @@ export function UserDetailView({ userId, onBack, onUserUpdated }: UserDetailView
           </div>
 
 
-
+          <WarningDialog
+            open={isDeleteDialogOpen}
+            onOpenChange={setIsDeleteDialogOpen}
+            title="Delete User Account?"
+            description={
+              <div className="space-y-3">
+                <p className="text-foreground">
+                  Are you sure you want to delete{" "}
+                  <strong className="text-foreground">{fullName || `User #${displayUserId}`}</strong> (User ID:{" "}
+                  <span className="font-mono font-semibold text-primary">{displayUserId}</span>)?
+                </p>
+                <div className="text-xs text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 p-3 rounded-xl border border-rose-200 dark:border-rose-900/50 leading-relaxed font-medium">
+                  ⚠️ This action is permanent and cannot be undone. It will remove the user's login access and associated school profile.
+                </div>
+                {deleteError && (
+                  <div className="text-xs text-red-700 bg-red-100 p-2.5 rounded-xl font-medium">
+                    {deleteError}
+                  </div>
+                )}
+              </div>
+            }
+            confirmText="Yes, Delete User"
+            cancelText="Cancel"
+            variant="danger"
+            isLoading={isDeleting}
+            onConfirm={handleDeleteUser}
+          />
         </>
       )}
     </div>
