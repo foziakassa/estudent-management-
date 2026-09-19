@@ -15,7 +15,7 @@ function renderView(role: Role, active: string) {
     if (active === "dashboard") return <AdminDashboard />;
     if (active === "users") return <AdminUsers />;
     if (active === "structure") return <AdminStructure />;
-    if (active === "calendar") return <CalendarView />;
+    if (active === "calendar") return <CalendarView canManage />;
     if (active === "lostfound") return <LostFoundView />;
     if (active === "feedback") return <FeedbackAdminView />;
   }
