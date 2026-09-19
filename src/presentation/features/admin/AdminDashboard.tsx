@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Bell, GraduationCap, BookOpen, UserCheck, Users } from "lucide-react";
 import {
   AreaChart,
@@ -13,8 +14,65 @@ import {
 } from "recharts";
 import { announcements, gradeDistData, performanceData } from "@/infrastructure/data/mock";
 import { StatCard, StatusBadge } from "@/presentation/components/shared";
+import axiosInstance from "@/domain/utils/axios_instanse";
+
+type RoleCounts = {
+  students: number | null;
+  teachers: number | null;
+  parents: number | null;
+};
+
+async function fetchRoleTotal(role: string): Promise<number> {
+  const response = await axiosInstance.get("/users/", {
+    params: { role, page: 1, limit: 1, count: true },
+  });
+  const payload = response.data?.data ?? response.data;
+  return payload?.total ?? 0;
+}
+
+function formatCount(value: number | null, loading: boolean) {
+  if (loading || value === null) return "—";
+  return value.toLocaleString();
+}
 
 export function AdminDashboard() {
+  const [counts, setCounts] = useState<RoleCounts>({
+    students: null,
+    teachers: null,
+    parents: null,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCounts() {
+      setIsLoading(true);
+      try {
+        const [students, teachers, parents] = await Promise.all([
+          fetchRoleTotal("STUDENT"),
+          fetchRoleTotal("TEACHER"),
+          fetchRoleTotal("PARENT"),
+        ]);
+        if (!cancelled) {
+          setCounts({ students, teachers, parents });
+        }
+      } catch (err) {
+        console.error("Failed to load role counts:", err);
+        if (!cancelled) {
+          setCounts({ students: 0, teachers: 0, parents: 0 });
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    loadCounts();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="space-y-6">
       <div>
@@ -24,10 +82,25 @@ export function AdminDashboard() {
         <p className="text-muted-foreground text-sm mt-1">Ethio Academy — Academic Year 2025/26</p>
       </div>
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
-        <StatCard label="Total Students" value="1,248" sub="Across 6 grade levels" icon={<GraduationCap size={18} />} trend={5} />
-        <StatCard label="Teachers" value="64" sub="32 subjects covered" icon={<UserCheck size={18} />} trend={2} />
+        <StatCard
+          label="Total Students"
+          value={formatCount(counts.students, isLoading)}
+          sub={isLoading ? "Loading..." : "Registered student accounts"}
+          icon={<GraduationCap size={18} />}
+        />
+        <StatCard
+          label="Teachers"
+          value={formatCount(counts.teachers, isLoading)}
+          sub={isLoading ? "Loading..." : "Registered teacher accounts"}
+          icon={<UserCheck size={18} />}
+        />
         <StatCard label="Active Sections" value="38" sub="2 semesters running" icon={<BookOpen size={18} />} />
-        <StatCard label="Parent Accounts" value="892" sub="Multi-student bindings" icon={<Users size={18} />} trend={8} />
+        <StatCard
+          label="Parent Accounts"
+          value={formatCount(counts.parents, isLoading)}
+          sub={isLoading ? "Loading..." : "Registered parent accounts"}
+          icon={<Users size={18} />}
+        />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
         <div className="lg:col-span-2 bg-white rounded-2xl border border-border p-4 md:p-5">
