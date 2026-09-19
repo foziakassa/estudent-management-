@@ -20,6 +20,7 @@ const STATUS_STYLES: Record<string, string> = {
   Teacher: "bg-blue-100 text-blue-700",
   Student: "bg-teal-100 text-teal-700",
   Parent: "bg-purple-100 text-purple-700",
+  Admin: "bg-amber-100 text-amber-700",
 };
 
 type StatusBadgeProps = {
