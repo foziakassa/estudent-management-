@@ -27,6 +27,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
       return;
     }
     setError("");
+    localStorage.setItem("student_id", userId.trim());
     onLogin(detectedRole);
   };
 
