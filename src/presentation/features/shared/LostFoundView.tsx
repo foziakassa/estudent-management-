@@ -5,7 +5,7 @@ import type {
   LostFoundItem,
   LostFoundItemType,
 } from "@/domain/Models/lost-found.model";
-import { StatusBadge } from "@/presentation/components/shared";
+import { StatusBadge, TablePagination } from "@/presentation/components/shared";
 import {
   Dialog,
   DialogContent,
@@ -262,33 +262,14 @@ export function LostFoundView() {
         )}
       </div>
 
-      {total > 0 && (
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <p className="text-xs text-muted-foreground">
-            Page {page} of {totalPages} · {total} items
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={page <= 1 || isFetching}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-xl px-3 py-2 text-sm"
-            >
-              Previous
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={page >= totalPages || isFetching}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="rounded-xl px-3 py-2 text-sm"
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
+      <TablePagination
+        page={page}
+        totalPages={totalPages}
+        totalItems={total}
+        itemLabel="items"
+        isLoading={isFetching}
+        onPageChange={setPage}
+      />
 
       <Dialog open={isModalOpen} onOpenChange={(open) => !open && handleModalClose()}>
         <DialogContent className="sm:max-w-md">
