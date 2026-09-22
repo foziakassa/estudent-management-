@@ -27,7 +27,7 @@ axiosInstance.interceptors.request.use(
     (config) => {
         // const token = localStorage.getItem("token"); // Ensure your login saves access_token here
         // if (token) {
-        config.headers.Authorization = `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoiQURNSU4iLCJlbWFpbCI6ImFkbWluQHNjaG9vbC5jb20iLCJpc3MiOiJTY2hvb2wgTWFuYWdlbWVudCBTeXN0ZW0iLCJleHAiOjE3ODk4OTA5ODMsIm5iZiI6MTc4OTgwNDU4MywiaWF0IjoxNzg5ODA0NTgzfQ.Gc7-CgXFSUQWCrm5XTs3pQEemOZ-ibBdZ6_98r4dkwU`;
+        config.headers.Authorization = `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoiQURNSU4iLCJlbWFpbCI6ImFkbWluQHNjaG9vbC5jb20iLCJpc3MiOiJTY2hvb2wgTWFuYWdlbWVudCBTeXN0ZW0iLCJleHAiOjE3OTAxNTI5NjcsIm5iZiI6MTc5MDA2NjU2NywiaWF0IjoxNzkwMDY2NTY3fQ.It97myE3txAjnp_QJ3wZUb9YPvpVmltKbzLV_PgWk1s`;
         // }
         return config;
     },
