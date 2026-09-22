@@ -1,29 +1,54 @@
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useEffect, useState } from "react";
 import { clampScore, calcAverage, calcLetterGrade } from "@/domain/utils/grades";
-import { students } from "@/infrastructure/data/mock";
-import { StatusBadge } from "@/presentation/components/shared";
+import { StatusBadge, TablePagination } from "@/presentation/components/shared";
+import { getStudentGrades, getTeacherStudents, type TeacherStudent } from "@/domain/utils/teacher-api";
+import { TeacherStudentDetail } from "./TeacherStudentDetail";
 
 export function GradeEntryView() {
-  const sections = ["11-A", "11-B"];
-  const [activeSection, setActiveSection] = useState("11-A");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [grades, setGrades] = useState<Record<string, { quiz: string; assignment: string; test: string; final: string }>>(
-    Object.fromEntries(
-      students.map((s) => [
-        s.id,
-        {
-          quiz: String(s.quiz),
-          assignment: String(s.assignment),
-          test: String(s.test),
-          final: String(s.final),
-        },
-      ])
-    )
-  );
+  const [students, setStudents] = useState<TeacherStudent[]>([]);
+  const [activeSection, setActiveSection] = useState("");
+  const [selectedStudent, setSelectedStudent] = useState<TeacherStudent | null>(null);
+  const [grades, setGrades] = useState<Record<string, { quiz: string; assignment: string; test: string; final: string }>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
+  useEffect(() => {
+    getTeacherStudents()
+      .then(async (loadedStudents) => {
+        setStudents(loadedStudents);
+        setActiveSection(loadedStudents[0]?.section ?? "");
+        const loadedGrades = await Promise.all(
+          loadedStudents.map(async (student) => {
+            try {
+              const [grade] = await getStudentGrades(String(student.apiId));
+              const record = (grade ?? {}) as Record<string, unknown>;
+              const score = (keys: string[]) => {
+                const found = keys.map((key) => record[key]).find((value) => value !== undefined && value !== null);
+                return found === undefined ? "" : String(found);
+              };
+              return [student.id, {
+                quiz: score(["quiz"]),
+                assignment: score(["assignment"]),
+                test: score(["midterm", "test"]),
+                final: score(["final", "final_exam"]),
+              }] as const;
+            } catch {
+              return [student.id, { quiz: "", assignment: "", test: "", final: "" }] as const;
+            }
+          })
+        );
+        setGrades(Object.fromEntries(loadedGrades));
+      })
+      .catch((err) => setError(err.response?.data?.message || err.message || "Failed to load students."))
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const sections = [...new Set(students.map((student) => student.section))];
 
   const calcTotal = (id: string) => {
-    const g = grades[id];
+    const g = grades[id] ?? { quiz: "", assignment: "", test: "", final: "" };
     return calcAverage(
       clampScore(g.quiz),
       clampScore(g.assignment),
@@ -37,13 +62,12 @@ export function GradeEntryView() {
     .map((s) => ({ ...s, total: calcTotal(s.id) }))
     .sort((a, b) => b.total - a.total)
     .map((s, i) => ({ ...s, rank: i + 1 }));
+  const totalPages = Math.max(1, Math.ceil(sectionStudents.length / pageSize));
+  const pageStudents = sectionStudents.slice((page - 1) * pageSize, page * pageSize);
 
-  const FIELDS = [
-    { key: "quiz" as const, label: "Quiz", max: 100, color: "bg-blue-50 border-blue-200", accent: "text-blue-600" },
-    { key: "assignment" as const, label: "Assignment", max: 100, color: "bg-purple-50 border-purple-200", accent: "text-purple-600" },
-    { key: "test" as const, label: "Midterm", max: 100, color: "bg-amber-50 border-amber-200", accent: "text-amber-600" },
-    { key: "final" as const, label: "Final Exam", max: 100, color: "bg-teal-50 border-teal-200", accent: "text-teal-600" },
-  ];
+  if (selectedStudent) {
+    return <TeacherStudentDetail student={selectedStudent} onBack={() => setSelectedStudent(null)} />;
+  }
 
   return (
     <div className="space-y-6">
@@ -64,7 +88,7 @@ export function GradeEntryView() {
             key={sec}
             onClick={() => {
               setActiveSection(sec);
-              setExpandedId(null);
+              setPage(1);
             }}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
               activeSection === sec
@@ -78,12 +102,14 @@ export function GradeEntryView() {
         <span className="ml-auto text-xs text-muted-foreground">{sectionStudents.length} students</span>
       </div>
 
+      {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">{error}</p>}
+
       <div className="bg-white rounded-2xl border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-secondary/40">
-                {["Rank", "Student", "ID", "Quiz", "Assignment", "Midterm", "Final", "Average", "Grade", ""].map((h) => (
+                {["Rank", "Student", "ID", "Quiz", "Assignment", "Midterm", "Final", "Average", "Grade"].map((h) => (
                   <th key={h} className="text-left py-3 px-3 text-muted-foreground font-medium text-xs uppercase tracking-wide whitespace-nowrap">
                     {h}
                   </th>
@@ -91,18 +117,15 @@ export function GradeEntryView() {
               </tr>
             </thead>
             <tbody>
-              {sectionStudents.map((s) => {
-                const g = grades[s.id];
-                const isExpanded = expandedId === s.id;
+              {pageStudents.map((s) => {
+                const g = grades[s.id] ?? { quiz: "", assignment: "", test: "", final: "" };
                 const total = s.total;
                 const letter = calcLetterGrade(total);
                 return (
-                  <div key={s.id} className="contents">
                     <tr
-                      className={`border-b border-border/50 transition-colors cursor-pointer ${
-                        isExpanded ? "bg-secondary/50" : "hover:bg-secondary/30"
-                      }`}
-                      onClick={() => setExpandedId(isExpanded ? null : s.id)}
+                      key={s.id}
+                      className="border-b border-border/50 transition-colors cursor-pointer hover:bg-secondary/30"
+                      onClick={() => setSelectedStudent(s)}
                     >
                       {/* Rank */}
                       <td className="py-3 px-3">
@@ -130,72 +153,22 @@ export function GradeEntryView() {
                       <td className="py-3 px-3">
                         <StatusBadge type={letter} />
                       </td>
-                      <td className="py-3 px-3">
-                        <ChevronDown size={15} className={`text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`} />
-                      </td>
                     </tr>
 
-                    {/* Expanded detail row */}
-                    {isExpanded && (
-                      <tr className="border-b border-border/50 bg-secondary/20">
-                        <td colSpan={10} className="px-4 py-4">
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            {FIELDS.map((field) => (
-                              <div key={field.key} className={`rounded-xl border p-3 space-y-2 ${field.color}`}>
-                                <div className="flex items-center justify-between">
-                                  <span className={`text-xs font-semibold uppercase tracking-wide ${field.accent}`}>{field.label}</span>
-                                  <span className="text-xs text-muted-foreground">/{field.max}</span>
-                                </div>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={field.max}
-                                  value={grades[s.id][field.key]}
-                                  onClick={(e) => e.stopPropagation()}
-                                  onChange={(e) =>
-                                    setGrades((prev) => ({
-                                      ...prev,
-                                      [s.id]: { ...prev[s.id], [field.key]: e.target.value },
-                                    }))
-                                  }
-                                  className="w-full px-3 py-2 rounded-lg bg-white border border-white/80 text-center text-lg font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                />
-                                {/* Mini bar */}
-                                <div className="h-1.5 rounded-full bg-white/60 overflow-hidden">
-                                  <div
-                                    className="h-full rounded-full bg-current transition-all"
-                                    style={{
-                                      width: `${clampScore(grades[s.id][field.key])}%`,
-                                      color: field.accent.replace("text-", ""),
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="mt-3 flex items-center justify-between">
-                            <p className="text-xs text-muted-foreground">
-                              Average of all 4 components · Rank <strong className="text-foreground">#{s.rank}</strong> in {activeSection}
-                            </p>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setExpandedId(null);
-                              }}
-                              className="text-xs text-primary font-medium hover:underline"
-                            >
-                              Collapse
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </div>
                 );
               })}
             </tbody>
           </table>
         </div>
+        <TablePagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={sectionStudents.length}
+          itemLabel="students"
+          onPageChange={(nextPage) => {
+            setPage(nextPage);
+          }}
+        />
         <div className="p-4 border-t border-border flex justify-end">
           <button className="bg-primary text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-teal-700 transition-colors">
             Save Grades
