@@ -1,9 +1,15 @@
+import { useState } from "react";
 import { FileText, GraduationCap } from "lucide-react";
 import { deriveSubjectScores } from "@/domain/utils/grades";
 import { subjects } from "@/infrastructure/data/mock";
-import { StatusBadge } from "@/presentation/components/shared";
+import { StatusBadge, TablePagination } from "@/presentation/components/shared";
 
 export function ParentReport() {
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const totalPages = Math.max(1, Math.ceil(subjects.length / pageSize));
+  const pageSubjects = subjects.slice((page - 1) * pageSize, page * pageSize);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -54,7 +60,7 @@ export function ParentReport() {
               </tr>
             </thead>
             <tbody>
-              {subjects.map((subject, index) => {
+              {pageSubjects.map((subject, index) => {
                 const { quiz, test, final, avg, letter } = deriveSubjectScores(subject.score);
                 return (
                   <tr key={index} className="border-b border-border/50">
@@ -72,6 +78,13 @@ export function ParentReport() {
               })}
             </tbody>
           </table>
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={subjects.length}
+            itemLabel="subjects"
+            onPageChange={setPage}
+          />
         </div>
       </div>
     </div>
