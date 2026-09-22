@@ -1,7 +1,14 @@
+import { useState } from "react";
 import { BookOpen, Calendar, LayoutDashboard, Plus } from "lucide-react";
 import { subjects } from "@/infrastructure/data/mock";
+import { TablePagination } from "@/presentation/components/shared";
 
 export function AdminStructure() {
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const totalPages = Math.max(1, Math.ceil(subjects.length / pageSize));
+  const pageSubjects = subjects.slice((page - 1) * pageSize, page * pageSize);
+
   return (
     <div className="space-y-6">
       <div>
@@ -48,7 +55,7 @@ export function AdminStructure() {
               </tr>
             </thead>
             <tbody>
-              {subjects.map((subject, index) => (
+              {pageSubjects.map((subject, index) => (
                 <tr key={index} className="border-b border-border/50 hover:bg-secondary/40 transition-colors">
                   <td className="py-3 px-2 font-medium text-foreground">{subject.name}</td>
                   <td className="py-3 px-2 text-foreground">{subject.teacher}</td>
@@ -67,6 +74,13 @@ export function AdminStructure() {
             </tbody>
           </table>
         </div>
+        <TablePagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={subjects.length}
+          itemLabel="assignments"
+          onPageChange={setPage}
+        />
       </div>
     </div>
   );

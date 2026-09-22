@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Eye, Plus, Search } from "lucide-react";
+import { Eye, Plus, Search } from "lucide-react";
 import type { UserAccount } from "@/domain/types";
-import { StatusBadge } from "@/presentation/components/shared";
+import { StatusBadge, TablePagination } from "@/presentation/components/shared";
 import {
   Dialog,
   DialogContent,
@@ -383,36 +383,14 @@ export function AdminUsers() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between gap-3 flex-wrap pt-2">
-          <p className="text-xs text-muted-foreground">
-            Showing page {page} of {totalPages} · {total} total users
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={page <= 1 || isFetching}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-xl px-3 py-2 text-sm"
-            >
-              <ChevronLeft size={16} />
-              Previous
-            </Button>
-            <span className="text-sm font-medium text-foreground min-w-[4rem] text-center">
-              {page} / {totalPages}
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={page >= totalPages || isFetching}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="rounded-xl px-3 py-2 text-sm"
-            >
-              Next
-              <ChevronRight size={16} />
-            </Button>
-          </div>
-        </div>
+        <TablePagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={total}
+          itemLabel="users"
+          isLoading={isFetching}
+          onPageChange={setPage}
+        />
       </div>
 
       <div className="bg-white rounded-2xl border border-border p-5">
