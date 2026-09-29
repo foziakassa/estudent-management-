@@ -1,5 +1,6 @@
 import { useState } from "react";
-import type { Role } from "@/domain/types";
+import type { Role, AuthUser } from "@/domain/Models/auth-model";
+import { getStoredAuth, clearAuthSession } from "@/domain/utils/auth";
 import { Sidebar, AppHeader } from "@/presentation/components/layout";
 import { NAV_BY_ROLE } from "@/presentation/config/navigation";
 
@@ -42,7 +43,14 @@ function renderView(role: Role, active: string) {
 }
 
 export default function App() {
-  const [role, setRole] = useState<Role | null>(null);
+  const [role, setRole] = useState<Role | null>(() => {
+    const auth = getStoredAuth();
+    return auth.token && auth.role ? auth.role : null;
+  });
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
+    const auth = getStoredAuth();
+    return auth.user;
+  });
   const [active, setActive] = useState("dashboard");
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -50,20 +58,24 @@ export default function App() {
   if (!role) {
     return (
       <LoginScreen
-        onLogin={(selectedRole) => {
+        onLogin={(selectedRole, user) => {
           setRole(selectedRole);
+          if (user) {
+            setCurrentUser(user);
+          }
           setActive("dashboard");
         }}
       />
     );
   }
 
-  const nav = NAV_BY_ROLE[role];
+  const nav = NAV_BY_ROLE[role] || [];
   const activeLabel = nav.find((n) => n.key === active)?.label ?? "";
 
   const handleLogout = () => {
-    localStorage.removeItem("access_token");
+    clearAuthSession();
     setRole(null);
+    setCurrentUser(null);
   };
 
   return (
@@ -84,12 +96,13 @@ export default function App() {
         <AppHeader
           role={role}
           activeLabel={activeLabel}
+          userName={currentUser?.full_name}
           collapsed={collapsed}
           onToggleCollapse={() => setCollapsed((c) => !c)}
           onMenuOpen={() => setMobileOpen(true)}
           onLogout={handleLogout}
         />
-       
+
         <main className="flex-1 overflow-y-auto">
           <div className="w-full px-4 md:px-6 py-4 md:py-5">
             {renderView(role, active)}

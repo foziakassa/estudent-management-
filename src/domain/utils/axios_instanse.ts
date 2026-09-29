@@ -13,25 +13,26 @@
 // export default axiosInstance;
 import axios from "axios";
 
+const rawBaseUrl = import.meta.env.VITE_PUBLIC_APP_API || "http://localhost:8080/api/v1";
+const baseURL = typeof rawBaseUrl === "string" ? rawBaseUrl.trim() : "http://localhost:8080/api/v1";
+
 const axiosInstance = axios.create({
-    baseURL: import.meta.env.VITE_PUBLIC_APP_API,
+    baseURL,
     headers: {
         "Content-Type": "application/json",
-        // Fix: Vite uses import.meta.env, not process.env
-        // "x-api-key": import.meta.env.VITE_ORGANIZATION_API_KEY,
     },
 });
 
-// Request Interceptor: Automatically attach the JWT Access Token
+// Request Interceptor: Automatically attach the JWT Access Token from localStorage
 axiosInstance.interceptors.request.use(
     (config) => {
-        // const token = localStorage.getItem("token"); // Ensure your login saves access_token here
-        // if (token) {
-        config.headers.Authorization = `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoiQURNSU4iLCJlbWFpbCI6ImFkbWluQHNjaG9vbC5jb20iLCJpc3MiOiJTY2hvb2wgTWFuYWdlbWVudCBTeXN0ZW0iLCJleHAiOjE3OTAxNTI5NjcsIm5iZiI6MTc5MDA2NjU2NywiaWF0IjoxNzkwMDY2NTY3fQ.It97myE3txAjnp_QJ3wZUb9YPvpVmltKbzLV_PgWk1s`;
-        // }
+        const token = localStorage.getItem("access_token") || localStorage.getItem("token");
+        if (token) {
+            config.headers.Authorization = `Bearer ${token.trim()}`;
+        }
         return config;
     },
     (error) => Promise.reject(error)
 );
 
-export default axiosInstance;
+export default axiosInstance;

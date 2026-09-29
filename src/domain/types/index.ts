@@ -105,3 +105,4 @@ export type RoleConfig = {
   color: string;
   prefix: string;
 };
+

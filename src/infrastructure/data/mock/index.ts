@@ -1,4 +1,3 @@
-export { DEMO_USERS } from "./demo-users";
 export { performanceData } from "./performance-data";
 export { gradeDistData } from "./grade-dist-data";
 export { students } from "./students";
