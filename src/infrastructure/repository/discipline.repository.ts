@@ -1,15 +1,7 @@
 import axiosInstance from "@/domain/utils/axios_instanse";
 
-export type TeacherDiscipline = {
-  student: string;
-  student_id?: string;
-  id: string | number;
-  type: string;
-  date: string;
-  status: string;
-  notes?: string;
-};
 
+import { TeacherDiscipline } from "@/domain/Models/discipline-model";
 function getDisciplineItems(payload: unknown): TeacherDiscipline[] {
   if (Array.isArray(payload)) return payload as TeacherDiscipline[];
   if (!payload || typeof payload !== "object") return [];
