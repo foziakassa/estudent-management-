@@ -1,5 +1,6 @@
-import type { Role, AuthUser, LoginApiResponse, LoginCredentials, LoginResponseData } from "../Models/auth-model";
-import axiosInstance from "./axios_instanse";
+import type { Role, AuthUser, LoginApiResponse, LoginCredentials, LoginResponseData } from "@/domain/Models";
+import { authRepository } from "@/infrastructure/repository";
+
 
 export function detectRoleFromId(id: string): Role | null {
   if (!id) return null;
@@ -22,12 +23,9 @@ export function mapBackendRole(backendRole?: string): Role {
 }
 
 export async function loginApi(credentials: LoginCredentials): Promise<LoginApiResponse> {
-  const response = await axiosInstance.post<LoginApiResponse>("/auth/login", {
-    Username: credentials.Username,
-    password: credentials.password,
-  });
-  return response.data;
+  return authRepository.login(credentials);
 }
+
 
 export function saveAuthSession(data: LoginResponseData): { role: Role; user: AuthUser } {
   const { access_token, token_type, user } = data;

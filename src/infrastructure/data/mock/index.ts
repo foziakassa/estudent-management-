@@ -6,6 +6,5 @@ export { subjects } from "./subjects";
 export { announcements } from "./announcements";
 export { calendarEvents } from "./calendar-events";
 export { lostFound } from "./lost-found";
-export { userAccounts } from "./user-accounts";
 export { feedbackList } from "./feedback";
 export { children } from "./children";
